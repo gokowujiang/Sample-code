@@ -1,1 +1,85 @@
-ssss
+#include<stdio.h>
+#include<iostream.h>
+#include<sybfront.h>
+#include<sybdb.h>
+#include<syberror.h>
+using namespace std;
+
+void main()
+{
+	LOGINREC *Login;
+	DBPROCESS *Dbproc;
+	
+	if((Login=dblogin())==NULL)
+	{
+		cout<<"Unable to allocate memory for LOGINREC"<<endl;
+		exit();
+	}
+
+	int iRowtype;
+	float fCollection,fSubtotal,fGrandtotal;
+	char cMovietitle[30],cUsername[30],cPassword[30],cDate[9];
+
+	cout<<"Please enter the username:";
+	cin>>cUsername;
+	cout<<"Please enter the password:";
+	cin>>cPassword;
+
+	DBSETLUSER(Login,cUsername);
+	DBSETLPWD(Login,cPassword);
+
+	Dbproc=dbopen(Login,"GLOBASE");
+	if(Dbproc==NULL)
+	{
+		cout<<"Invalid User"<<endl;
+		exit();
+	}
+
+	dbuse(Dbproc,"films");
+
+	cout<<"Enter the date after which the report is required [mm-dd-yy]:";
+	cin>>cDate;
+
+	dbcmd(Dbproc,"select movie_title,collections from movies,sales");
+	dbcmd(Dbproc," where movies.movie_id=sales.movie_id");
+	dbfcmd(Dbproc," and salses.date>convert(datetime,'%s')",cDate);
+	dbcmd(Dbproc," order by movie_id");
+	dbcmd(Dbproc," compute sum(collections) by movie_id");
+	dbcmd(Dbproc," compute sum(collections)");
+
+	if (dbsqlexec(Dbproc)==FAIL)
+	{
+		cout<<"Error in the statement"<<endl;
+		exit();
+	}
+
+	dbresults(Dbproc);
+
+	dbbind(Dbproc,1,CHARBIND,0,cMovietitle);
+	dbbind(Dbproc,2,FLT8BIND,0,&fCollection);
+	dbaltbind(Dbproc,1,1,FLT8BIND,0,&fSubtotal);
+	dbaltbind(Dbproc,2,1,FLT8BIND,0,&fGrandtotal);
+
+	cout<<"Movie Title   " <<"   collection" <<endl;
+
+	while((iRowtype=dbnextrow(Dbproc))!=NO_MORE_ROWS)
+	{
+		switch(iRowtype)
+		{
+			case REG_ROW:
+				cout<<cMovietitle <<"  "<<fCollection<<endl;
+				break;
+
+			case 1
+				cout<<"The collection of this movie is "<<fSubtotal<<endl;
+				break;
+
+			case 2
+				cout<<"The total collection is "<<fGrandtotal<<endl;
+				break;
+		}
+	}
+
+	dbclose(Dbproc);
+
+}
